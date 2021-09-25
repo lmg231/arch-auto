@@ -1,4 +1,5 @@
 #!/bin/bash
+# This one is only for my computer
 if timedatectl set-ntp true &> /dev/null;then
 echo "set time done"
 fi
