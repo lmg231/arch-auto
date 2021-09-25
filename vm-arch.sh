@@ -1,4 +1,5 @@
 #!/bin/bash
+#This one is for virture machine
 if timedatectl set-ntp true &> /dev/null;then
 echo "set time done"
 fi
