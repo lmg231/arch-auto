@@ -1,5 +1,5 @@
 #!/bin/bash
-if timedatectl set-ntp true ;then
+if timedatectl set-ntp true &> /dev/null;then
 timedatectl status
 fi
 selectPart() {
@@ -47,6 +47,7 @@ selectPart() {
                 ;;
             3)
                 mkfs.btrfs "$PARTPATH"
+                SUPPORT="btrfs-progs"
                 break
                 ;;
             4)
@@ -69,7 +70,8 @@ selectPart() {
 mountPartition() {
     if [ $# == 1 ]; then
         mountPoint=$1
-        selectPart
+ 
+          selectPart
     elif [ $# == 2 ]; then
         mountPoint=$2
         PARTPATH=$1
@@ -82,7 +84,7 @@ mountPartition() {
     fi
 }
 
-if ls /sys/firmware/efi/efivars &>/dev/null; then
+if ls /sys/firmware/efi/efivars &> /dev/null; then
     echo "Your computer boot in uefi mode,GPT lable and an efi partition are needed"
 else
     exit 0
@@ -99,14 +101,14 @@ select option in "Mount /mnt" "Mount efi" "Creat a swap partition" "Creat an ano
         ;;
     "Mount efi")
         read -rp "Please create a EFI mount point:/efi,/boot/efi,or /boot:" ESP
+        mkdir -p "/mnt$ESP"
         fdisk -l | awk '/EFI/ {print $1}'
         read -rp "Whether there is an EFI partion?:number or no:" BOOLEAN3
         if [ "$BOOLEAN3" == "no" ]; then
-            mkdir -p "/mnt$ESP"
             mountPartition "/mnt$ESP"
         else
             EPATION=$(fdisk -l | awk '/EFI/ {print $1}' | awk 'NR=='"$BOOLEAN3"' {print $1}')
-            mountPartition "$EPATION" "ESP"
+            mountPartition "$EPATION" "$ESP"
         fi
         ;;
     "Creat a swap partition")
@@ -132,6 +134,7 @@ read -rp "Give your computer a name:" CNAME
 read -rp "Input your root password:" ROOTPASSWORD
 read -rp "Input your name:" USERNAME
 read -rp "Input  your password:" USERPASSWORD
+read -rp "Input the boot name:" BOOTNAME
 while true; do
     read -rp "Select your cpu manufacturer:1 intel    2 amd:" CPU
     if [ "$CPU" == 1 ]; then
@@ -144,7 +147,8 @@ while true; do
         echo "Wrong,please again!"
     fi
 done
-pacstrap /mnt base base-devel linux linux-firmware man-db man-pages vi vim texinfo dhcpcd
+sed -i "1i\Server = http://mirrors.163.com/archlinux/\$repo/os/\$arch" /etc/pacman.d/mirrorlist
+pacstrap /mnt base base-devel linux linux-firmware man-db man-pages vi vim texinfo dhcpcd $SUPPORT
 genfstab -U /mnt >> /mnt/etc/fstab
 arch-chroot /mnt <<EOFARCH
 ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
@@ -157,8 +161,13 @@ locale-gen
 echo "LANG=en_US.UTF-8" >> /etc/locale.conf
 echo $CNAME > /etc/hostname
 echo -e "127.0.0.1    localhost\n::1    localhost\n127.0.0.1      $CNAME.localdomain    $CNAME" >> /etc/hosts
-pacman -S --noconfirm networkmanager zsh openssh git curl wget neofetch dialog 
-systemctl enable NetworkManager sshd
+pacman -S --noconfirm networkmanager zsh openssh git curl wget neofetch dialog haveged
+systemctl enable NetworkManager sshd haveged
+rm -rf /etc/pacman.d/gnupg
+pacman-key --init
+pacman-key --populate archlinux
+pacman -Sy --noconfirm archlinux-keyring
+pacman -Syu
 passwd<<EOF
 $ROOTPASSWORD
 $ROOTPASSWORD
@@ -170,6 +179,6 @@ $USERPASSWORD
 EOF
 sed -i 's/^# %wheel ALL=(ALL) NOPASSWD/%wheel ALL=(ALL) NOPASSWD/' /etc/sudoers
 pacman -S --noconfirm $MICROCODE ntfs-3g os-prober grub efibootmgr
-grub-install --target=x86_64-efi --efi-directory=$ESP --bootloader-id=arch
+grub-install --target=x86_64-efi --efi-directory=$ESP --bootloader-id=$BOOTNAME
 grub-mkconfig -o /boot/grub/grub.cfg
 EOFARCH
