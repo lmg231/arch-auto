@@ -3,7 +3,7 @@
 if timedatectl set-ntp true &> /dev/null;then
 echo "set time done"
 fi
-fdisk /dev/nvme0n1 <<EOF
+fdisk /dev/sda <<EOF
 g
 n
 
@@ -20,28 +20,32 @@ n
 w
 
 EOF
-fdisk -l /dev/nvme0n1
+fdisk -l /dev/sda
 read -r -s -n1 -p "Is that ok? Press any key to continue,or CTRL+C to exit."
-if mkfs.ext4 /dev/nvme0n1p3;then 
-if mount /dev/nvme0n1p3 /mnt;then
+if mkfs.ext4 /dev/sda3;then 
+if mount /dev/sda3 /mnt;then
 echo "mount /mnt success"
 fi
 fi
 
 mkdir -p /mnt/efi
-if mkfs.fat -F32 /dev/nvme0n1p1;then
-if mount /dev/nvme0n1p1 /mnt/efi;then
+if mkfs.fat -F32 /dev/sda1;then
+if mount /dev/sda1 /mnt/efi;then
 echo "mount /mnt/efi success"
 fi
 fi
 
-if mkswap /dev/nvme0n1p2;then
-if swapon /dev/nvme0n1p2;then
+if mkswap /dev/sda2;then
+if swapon /dev/sda2;then
 echo "Creat swap success"
 fi
 fi
 lsblk
 sed -i "1i\Server = http://mirrors.163.com/archlinux/\$repo/os/\$arch" /etc/pacman.d/mirrorlist
+sed -i "2iServer = https://mirrors.ustc.edu.cn/archlinux/\$repo/os/\$arch"
+sed -i "3iServer = https://mirrors.tuna.tsinghua.edu.cn/archlinux/\$repo/os/\$arch"
+read -r -s -n1 -p "Is that ok? Press any key to continue,or CTRL+C to exit."
+head -3 /etc/pacman.d/mirrorlist
 read -r -s -n1 -p "Is that ok? Press any key to continue,or CTRL+C to exit."
 pacstrap /mnt base base-devel linux linux-firmware man-db man-pages vi vim texinfo dhcpcd
 genfstab -U /mnt >> /mnt/etc/fstab
