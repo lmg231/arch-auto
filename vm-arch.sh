@@ -41,11 +41,9 @@ echo "Creat swap success"
 fi
 fi
 lsblk
-sed -i "1i\Server = http://mirrors.163.com/archlinux/\$repo/os/\$arch" /etc/pacman.d/mirrorlist
-sed -i "2iServer = https://mirrors.ustc.edu.cn/archlinux/\$repo/os/\$arch"
-sed -i "3iServer = https://mirrors.tuna.tsinghua.edu.cn/archlinux/\$repo/os/\$arch"
 read -r -s -n1 -p "Is that ok? Press any key to continue,or CTRL+C to exit."
-head -3 /etc/pacman.d/mirrorlist
+reflector --country China --age 120 --sort rate
+head -20 /etc/pacman.d/mirrorlist
 read -r -s -n1 -p "Is that ok? Press any key to continue,or CTRL+C to exit."
 pacstrap /mnt base base-devel linux linux-firmware man-db man-pages vi vim texinfo dhcpcd
 genfstab -U /mnt >> /mnt/etc/fstab
